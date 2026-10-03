@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.idea/
+.gradle/
+**/build/
+local.properties
+*.iml
+.DS_Store
+server/data/
+*.log
+.env
+.cxx/
+captures/

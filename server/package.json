@@ -1,0 +1,29 @@
+{
+  "name": "remote-coding-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Windows remote coding workstation server",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "build": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "koffi": "^2.11.0",
+    "screenshot-desktop": "^1.15.1",
+    "sharp": "^0.34.2",
+    "ws": "^8.18.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.15.21",
+    "@types/ws": "^8.18.1",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

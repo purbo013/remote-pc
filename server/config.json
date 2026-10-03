@@ -1,0 +1,13 @@
+{
+  "port": 8765,
+  "host": "0.0.0.0",
+  "remoteControl": true,
+  "screenQuality": 70,
+  "maxFps": 15,
+  "projects": [
+    {
+      "name": "Default web root",
+      "url": "http://{pcIp}/"
+    }
+  ]
+}
