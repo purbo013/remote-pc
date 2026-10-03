@@ -21,6 +21,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
@@ -36,6 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.remotecoding.workstation.data.RemoteSession
+import kotlinx.coroutines.delay
 
 private data class PanelKey(
     val label: String,
@@ -85,6 +88,8 @@ private val navKeySize = touchRowHeight
 /** Tinggi tombol baris utama & Ctrl (harus sama). */
 private val rowKeyHeight = 32.dp
 private val verticalPadWidth = 48.dp
+private const val TYPE_FIELD_IDLE_CLEAR_MS = 5_000L
+
 @Composable
 fun RemoteKeyboardPanel(
     controller: RemoteSession,
@@ -93,6 +98,13 @@ fun RemoteKeyboardPanel(
     modifier: Modifier = Modifier,
 ) {
     var typed by remember { mutableStateOf("") }
+    var typeFieldFocused by remember { mutableStateOf(false) }
+
+    LaunchedEffect(typed, typeFieldFocused) {
+        if (!typeFieldFocused || typed.isEmpty()) return@LaunchedEffect
+        delay(TYPE_FIELD_IDLE_CLEAR_MS)
+        typed = ""
+    }
     val mainKeysScroll = rememberScrollState()
     val shortcutKeysScroll = rememberScrollState()
     val blockHeight = touchRowHeight + touchGap + touchRowHeight
@@ -142,7 +154,11 @@ fun RemoteKeyboardPanel(
                                 textStyle = TextStyle(color = Color.White, fontSize = 14.sp),
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(touchRowHeight),
+                                    .height(touchRowHeight)
+                                    .onFocusChanged { state ->
+                                        typeFieldFocused = state.isFocused
+                                        if (!state.isFocused) typed = ""
+                                    },
                                 decorationBox = { inner ->
                                     Surface(
                                         color = RemotePanelStyle.inputBg,

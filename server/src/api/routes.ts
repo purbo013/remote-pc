@@ -4,6 +4,7 @@ import { log } from "../logger.js";
 import { clientIp, getLanIPv4, isLoopback } from "../network.js";
 import { extractBearer, listDevices, registerDevice, verifyToken } from "../security/auth.js";
 import { generatePairingCode } from "../security/pairing.js";
+import { isRelayAgentOnline } from "../relay/status.js";
 import type { RuntimeState } from "../state.js";
 import { listConnected } from "../state.js";
 
@@ -74,6 +75,7 @@ export function registerRoutes(app: Express, state: RuntimeState): void {
   });
 
   app.get("/api/console/state", requireLoopback, (_req, res) => {
+    const relay = state.config.relay;
     res.json({
       status: "Running",
       ips: getLanIPv4(),
@@ -81,6 +83,13 @@ export function registerRoutes(app: Express, state: RuntimeState): void {
       pairingCode: state.pairingCode,
       remoteControl: state.config.remoteControl,
       connected: listConnected(state),
+      relay: {
+        enabled: relay.enabled,
+        online: isRelayAgentOnline(),
+        url: relay.url,
+        nodeId: relay.nodeId,
+        phoneBasePath: `/n/${relay.nodeId}`,
+      },
     });
   });
 }

@@ -9,6 +9,7 @@ import { log } from "./logger.js";
 import { clientIp, getLanIPv4, isLoopback } from "./network.js";
 import { generatePairingCode } from "./security/pairing.js";
 import type { RuntimeState } from "./state.js";
+import { startRelayAgent } from "./relay/agent.js";
 import { attachWebsocket } from "./websocket/handler.js";
 
 const config = loadConfig();
@@ -47,6 +48,9 @@ const httpServer = createServer(app);
 const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 attachWebsocket(wss, state);
 
+const stopRelay = startRelayAgent({ relay: config.relay, localPort: config.port });
+process.on("SIGINT", () => stopRelay());
+
 httpServer.listen(config.port, config.host, () => {
   const ips = getLanIPv4();
   log("Server started");
@@ -54,6 +58,9 @@ httpServer.listen(config.port, config.host, () => {
   log(`LAN IPs: ${ips.join(", ") || "none detected"}`);
   log("Pairing code is displayed on the local console only");
   log("Open http://127.0.0.1:" + config.port + "/console on this PC");
+  if (config.relay.enabled) {
+    log(`Internet relay: nodeId=${config.relay.nodeId} → ${config.relay.url}`);
+  }
   openConsole(config.port);
 });
 

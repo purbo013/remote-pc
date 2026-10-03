@@ -9,5 +9,11 @@
       "name": "Default web root",
       "url": "http://{pcIp}/"
     }
-  ]
+  ],
+  "relay": {
+    "enabled": false,
+    "url": "http://127.0.0.1:8780",
+    "nodeId": "my-pc",
+    "secret": ""
+  }
 }

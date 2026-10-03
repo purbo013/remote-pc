@@ -4,7 +4,9 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.remotecoding.workstation.data.AppPrefs
+import com.remotecoding.workstation.data.ConnectionMode
 import com.remotecoding.workstation.data.ConnectionStatus
+import com.remotecoding.workstation.data.ConnectionTarget
 import com.remotecoding.workstation.data.PreferencesRepository
 import com.remotecoding.workstation.data.ProjectItem
 import com.remotecoding.workstation.data.RemoteApi
@@ -35,15 +37,32 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     val projects = MutableStateFlow<List<ProjectItem>>(emptyList())
     val notice = MutableStateFlow("")
 
-    fun saveConnection(host: String, port: Int, deviceName: String) {
+    fun saveConnection(
+        mode: ConnectionMode,
+        host: String,
+        port: Int,
+        relayUrl: String,
+        nodeId: String,
+        deviceName: String,
+    ) {
         viewModelScope.launch {
-            prefsRepo.update(host = host.trim(), port = port, deviceName = deviceName.trim())
+            prefsRepo.update(
+                connectionMode = mode,
+                host = host.trim(),
+                port = port,
+                relayUrl = relayUrl.trim(),
+                nodeId = nodeId.trim(),
+                deviceName = deviceName.trim(),
+            )
         }
     }
 
     fun saveSettings(
+        mode: ConnectionMode,
         host: String,
         port: Int,
+        relayUrl: String,
+        nodeId: String,
         deviceName: String,
         autoReconnect: Boolean,
         landscapeRemote: Boolean,
@@ -51,30 +70,38 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     ) {
         viewModelScope.launch {
             prefsRepo.update(
+                connectionMode = mode,
                 host = host.trim(),
                 port = port,
+                relayUrl = relayUrl.trim(),
+                nodeId = nodeId.trim(),
                 deviceName = deviceName.trim(),
                 autoReconnect = autoReconnect,
                 landscapeRemote = landscapeRemote,
                 screenQuality = screenQuality,
             )
-            session.configure(host.trim(), port, prefs.value.token, autoReconnect)
+            val target = ConnectionTarget(mode, host.trim(), port, relayUrl.trim(), nodeId.trim())
+            session.configure(target, prefs.value.token, autoReconnect)
         }
     }
 
     fun connect() {
         viewModelScope.launch {
             val p = prefs.value
-            if (p.host.isBlank()) {
-                notice.value = "Enter the PC IP address first."
+            val target = ConnectionTarget.from(p)
+            if (!target.isConfigured()) {
+                notice.value = when (target.mode) {
+                    ConnectionMode.LAN -> "Enter the PC IP address first."
+                    ConnectionMode.INTERNET -> "Enter Relay URL and Node ID from the PC console."
+                }
                 return@launch
             }
-            session.configure(p.host, p.port, p.token, p.autoReconnect)
+            session.configure(target, p.token, p.autoReconnect)
             val online = withContext(Dispatchers.IO) {
-                runCatching { api.health(p.host, p.port) }.getOrElse { false }
+                runCatching { api.health(target) }.getOrElse { false }
             }
             if (!online) {
-                notice.value = api.connectHint(p.host, hadTimeout = true, hadRefused = false)
+                notice.value = api.connectHint(target, hadTimeout = true, hadRefused = false)
                 return@launch
             }
             if (p.token.isBlank()) {
@@ -93,19 +120,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun pair(code: String) {
         viewModelScope.launch {
             val p = prefs.value
+            val target = ConnectionTarget.from(p)
             try {
                 val token = withContext(Dispatchers.IO) {
-                    api.pair(p.host, p.port, code, p.deviceName)
+                    api.pair(target, code, p.deviceName)
                 }
                 prefsRepo.update(token = token)
-                session.configure(p.host, p.port, token, p.autoReconnect)
+                session.configure(target, token, p.autoReconnect)
                 session.connect()
                 notice.value = "Paired and connected."
                 refreshProjects()
             } catch (error: Exception) {
                 val hint = when (error) {
-                    is SocketTimeoutException -> api.connectHint(p.host, hadTimeout = true, hadRefused = false)
-                    is ConnectException -> api.connectHint(p.host, hadTimeout = false, hadRefused = true)
+                    is SocketTimeoutException -> api.connectHint(target, hadTimeout = true, hadRefused = false)
+                    is ConnectException -> api.connectHint(target, hadTimeout = false, hadRefused = true)
                     else -> error.message ?: "Pairing failed"
                 }
                 notice.value = hint
@@ -117,8 +145,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val p = prefs.value
             if (p.token.isBlank()) return@launch
+            val target = ConnectionTarget.from(p)
             val remote = withContext(Dispatchers.IO) {
-                runCatching { api.projects(p.host, p.port, p.token) }.getOrElse { emptyList() }
+                runCatching { api.projects(target, p.token) }.getOrElse { emptyList() }
             }
             val extras = p.extraProjects.lines()
                 .map { it.trim() }
@@ -146,5 +175,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         notice.value = ""
     }
 
+    fun showNotice(message: String) {
+        notice.value = message
+    }
+
     fun isConnected(): Boolean = sessionState.value.status == ConnectionStatus.Connected
+
+    fun localhostUrl(): String? = ConnectionTarget.from(prefs.value).lanBrowserRoot()
 }

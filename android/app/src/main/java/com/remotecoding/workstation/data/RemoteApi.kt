@@ -11,12 +11,12 @@ import java.util.concurrent.TimeUnit
 
 class RemoteApi {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(8, TimeUnit.SECONDS)
+        .connectTimeout(8, TimeUnit.SECONDS)
+        .readTimeout(12, TimeUnit.SECONDS)
         .build()
 
-    fun health(host: String, port: Int): Boolean {
-        val request = Request.Builder().url("http://$host:$port/health").build()
+    fun health(target: ConnectionTarget): Boolean {
+        val request = Request.Builder().url("${target.httpBase()}/health").build()
         return try {
             client.newCall(request).execute().use { it.isSuccessful }
         } catch (_: IOException) {
@@ -24,14 +24,14 @@ class RemoteApi {
         }
     }
 
-    fun pair(host: String, port: Int, code: String, deviceName: String): String {
+    fun pair(target: ConnectionTarget, code: String, deviceName: String): String {
         val body = JSONObject()
             .put("code", code)
             .put("deviceName", deviceName)
             .toString()
             .toRequestBody("application/json".toMediaType())
         val request = Request.Builder()
-            .url("http://$host:$port/api/pair")
+            .url("${target.httpBase()}/api/pair")
             .post(body)
             .build()
         client.newCall(request).execute().use { response ->
@@ -44,9 +44,9 @@ class RemoteApi {
         }
     }
 
-    fun projects(host: String, port: Int, token: String): List<ProjectItem> {
+    fun projects(target: ConnectionTarget, token: String): List<ProjectItem> {
         val request = Request.Builder()
-            .url("http://$host:$port/api/projects")
+            .url("${target.httpBase()}/api/projects")
             .header("Authorization", "Bearer $token")
             .build()
         client.newCall(request).execute().use { response ->
@@ -62,14 +62,27 @@ class RemoteApi {
         }
     }
 
-    fun connectHint(host: String, hadTimeout: Boolean, hadRefused: Boolean): String {
+    fun connectHint(target: ConnectionTarget, hadTimeout: Boolean, hadRefused: Boolean): String {
+        val endpoint = when (target.mode) {
+            ConnectionMode.LAN -> "${target.host}:${target.port}"
+            ConnectionMode.INTERNET -> "${target.relayUrl}/n/${target.nodeId}"
+        }
         return buildString {
-            append("Unable to connect to $host.\n\nPossible causes:\n")
-            append("- PC offline\n")
-            append("- Wrong IP address or port\n")
-            append("- Firewall blocking TCP 8765 on the Private network\n")
-            append("- Remote server is not running\n")
-            append("- Phone and PC are not on the same Wi-Fi\n")
+            append("Unable to connect to $endpoint.\n\nPossible causes:\n")
+            append("- PC offline or server not running\n")
+            when (target.mode) {
+                ConnectionMode.LAN -> {
+                    append("- Wrong IP address or port\n")
+                    append("- Firewall blocking TCP ${target.port} on the Private network\n")
+                    append("- Phone and PC are not on the same Wi-Fi\n")
+                }
+                ConnectionMode.INTERNET -> {
+                    append("- Relay not running or wrong Relay URL\n")
+                    append("- Node ID does not match the PC config\n")
+                    append("- relay.enabled is false on the PC\n")
+                    append("- PC has no internet or cannot reach the relay\n")
+                }
+            }
             if (hadTimeout) append("\nThe request timed out.")
             if (hadRefused) append("\nThe connection was refused.")
         }

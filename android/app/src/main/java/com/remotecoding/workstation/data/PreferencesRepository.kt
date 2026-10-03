@@ -20,6 +20,9 @@ data class AppPrefs(
     val landscapeRemote: Boolean = true,
     val screenQuality: Int = 70,
     val extraProjects: String = "",
+    val connectionMode: ConnectionMode = ConnectionMode.LAN,
+    val relayUrl: String = "",
+    val nodeId: String = "",
 )
 
 class PreferencesRepository(private val context: Context) {
@@ -31,8 +34,13 @@ class PreferencesRepository(private val context: Context) {
     private val landscapeKey = booleanPreferencesKey("landscape_remote")
     private val qualityKey = intPreferencesKey("screen_quality")
     private val extraKey = stringPreferencesKey("extra_projects")
+    private val modeKey = stringPreferencesKey("connection_mode")
+    private val relayUrlKey = stringPreferencesKey("relay_url")
+    private val nodeIdKey = stringPreferencesKey("node_id")
 
     val prefs: Flow<AppPrefs> = context.dataStore.data.map { p ->
+        val modeRaw = p[modeKey] ?: ConnectionMode.LAN.name
+        val mode = runCatching { ConnectionMode.valueOf(modeRaw) }.getOrDefault(ConnectionMode.LAN)
         AppPrefs(
             host = p[hostKey].orEmpty(),
             port = p[portKey] ?: 8765,
@@ -42,6 +50,9 @@ class PreferencesRepository(private val context: Context) {
             landscapeRemote = p[landscapeKey] ?: true,
             screenQuality = p[qualityKey] ?: 70,
             extraProjects = p[extraKey].orEmpty(),
+            connectionMode = mode,
+            relayUrl = p[relayUrlKey].orEmpty(),
+            nodeId = p[nodeIdKey].orEmpty(),
         )
     }
 
@@ -54,6 +65,9 @@ class PreferencesRepository(private val context: Context) {
         landscapeRemote: Boolean? = null,
         screenQuality: Int? = null,
         extraProjects: String? = null,
+        connectionMode: ConnectionMode? = null,
+        relayUrl: String? = null,
+        nodeId: String? = null,
     ) {
         context.dataStore.edit { p ->
             host?.let { p[hostKey] = it }
@@ -64,6 +78,9 @@ class PreferencesRepository(private val context: Context) {
             landscapeRemote?.let { p[landscapeKey] = it }
             screenQuality?.let { p[qualityKey] = it }
             extraProjects?.let { p[extraKey] = it }
+            connectionMode?.let { p[modeKey] = it.name }
+            relayUrl?.let { p[relayUrlKey] = it }
+            nodeId?.let { p[nodeIdKey] = it }
         }
     }
 }

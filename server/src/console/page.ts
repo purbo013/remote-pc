@@ -28,6 +28,9 @@ export const consoleHtml = `<!doctype html>
     <div class="row"><div class="label">Pairing Code</div><div class="value code" id="code">------</div></div>
     <div class="row"><div class="label">Remote Control</div><div class="value" id="remote">ON</div></div>
     <div class="row"><div class="label">Connected Devices</div><ul id="devices"><li>None</li></ul></div>
+    <div class="row"><div class="label">Internet (relay)</div><div class="value" id="relay">OFF</div></div>
+    <div class="row"><div class="label">Node ID (phone)</div><div class="value" id="nodeId">—</div></div>
+    <div class="row"><div class="label">Relay URL (phone)</div><div class="value" id="relayUrl" style="font-size:14px;word-break:break-all">—</div></div>
     <div class="row">
       <button id="toggle">Toggle remote control</button>
       <button class="secondary" id="regen">New pairing code</button>
@@ -42,6 +45,18 @@ export const consoleHtml = `<!doctype html>
       document.getElementById('port').textContent = data.port;
       document.getElementById('code').textContent = data.pairingCode;
       document.getElementById('remote').textContent = data.remoteControl ? 'ON' : 'OFF';
+      const relay = data.relay || {};
+      const relayEl = document.getElementById('relay');
+      if (!relay.enabled) {
+        relayEl.textContent = 'OFF (enable in config.json)';
+      } else {
+        relayEl.textContent = relay.online ? 'ONLINE' : 'CONNECTING…';
+      }
+      document.getElementById('nodeId').textContent = relay.nodeId || '—';
+      const base = (relay.url || '').replace(/\/$/, '');
+      document.getElementById('relayUrl').textContent = relay.enabled && base
+        ? base + (relay.phoneBasePath || '')
+        : '—';
       const list = document.getElementById('devices');
       list.innerHTML = '';
       if (!data.connected?.length) {

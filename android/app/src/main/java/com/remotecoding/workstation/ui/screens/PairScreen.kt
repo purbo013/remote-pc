@@ -31,7 +31,10 @@ fun PairScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("Enter pairing code", style = MaterialTheme.typography.headlineSmall)
-        Text("Open the PC console at http://127.0.0.1:8765/console and type the 6-digit code.")
+        Text(
+            "Open the PC console at http://127.0.0.1:8765/console (on the PC) and enter the 6-digit code. " +
+                "Works for both Wi‑Fi and Internet mode after Relay URL / Node ID are set.",
+        )
         OutlinedTextField(
             value = code,
             onValueChange = { code = it.filter(Char::isDigit).take(6) },

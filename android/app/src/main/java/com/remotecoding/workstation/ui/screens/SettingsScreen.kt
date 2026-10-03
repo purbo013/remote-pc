@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -24,23 +25,30 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.remotecoding.workstation.data.AppPrefs
+import com.remotecoding.workstation.data.ConnectionMode
 
 @Composable
 fun SettingsScreen(
     prefs: AppPrefs,
-    onSave: (String, Int, String, Boolean, Boolean, Int) -> Unit,
+    onSave: (ConnectionMode, String, Int, String, String, String, Boolean, Boolean, Int) -> Unit,
     onBack: () -> Unit,
 ) {
+    var mode by remember { mutableStateOf(prefs.connectionMode) }
     var host by remember { mutableStateOf(prefs.host) }
     var port by remember { mutableStateOf(prefs.port.toString()) }
+    var relayUrl by remember { mutableStateOf(prefs.relayUrl) }
+    var nodeId by remember { mutableStateOf(prefs.nodeId) }
     var name by remember { mutableStateOf(prefs.deviceName) }
     var reconnect by remember { mutableStateOf(prefs.autoReconnect) }
     var landscape by remember { mutableStateOf(prefs.landscapeRemote) }
     var quality by remember { mutableStateOf(prefs.screenQuality.toString()) }
 
     LaunchedEffect(prefs) {
+        mode = prefs.connectionMode
         host = prefs.host
         port = prefs.port.toString()
+        relayUrl = prefs.relayUrl
+        nodeId = prefs.nodeId
         name = prefs.deviceName
         reconnect = prefs.autoReconnect
         landscape = prefs.landscapeRemote
@@ -55,8 +63,20 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("Settings", style = MaterialTheme.typography.headlineSmall)
-        OutlinedTextField(host, { host = it }, label = { Text("PC IP") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(port, { port = it }, label = { Text("PC Port") }, modifier = Modifier.fillMaxWidth())
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(selected = mode == ConnectionMode.LAN, onClick = { mode = ConnectionMode.LAN }, label = { Text("LAN") })
+            FilterChip(selected = mode == ConnectionMode.INTERNET, onClick = { mode = ConnectionMode.INTERNET }, label = { Text("Internet") })
+        }
+        when (mode) {
+            ConnectionMode.LAN -> {
+                OutlinedTextField(host, { host = it }, label = { Text("PC IP") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(port, { port = it }, label = { Text("PC Port") }, modifier = Modifier.fillMaxWidth())
+            }
+            ConnectionMode.INTERNET -> {
+                OutlinedTextField(relayUrl, { relayUrl = it }, label = { Text("Relay URL") }, modifier = Modifier.fillMaxWidth())
+                OutlinedTextField(nodeId, { nodeId = it }, label = { Text("Node ID") }, modifier = Modifier.fillMaxWidth())
+            }
+        }
         OutlinedTextField(name, { name = it }, label = { Text("Device name") }, modifier = Modifier.fillMaxWidth())
         OutlinedTextField(quality, { quality = it.filter(Char::isDigit).take(3) }, label = { Text("Screen quality (1-100)") }, modifier = Modifier.fillMaxWidth())
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -70,8 +90,11 @@ fun SettingsScreen(
         Button(
             onClick = {
                 onSave(
+                    mode,
                     host,
                     port.toIntOrNull() ?: 8765,
+                    relayUrl,
+                    nodeId,
                     name,
                     reconnect,
                     landscape,

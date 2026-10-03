@@ -65,8 +65,15 @@ class MainActivity : ComponentActivity() {
                                     if (prefs.landscapeRemote) askLandscape = true else route = "remote"
                                 },
                                 onLocalhost = {
-                                    browserUrl = "http://${prefs.host}/"
-                                    route = "browser"
+                                    val url = viewModel.localhostUrl()
+                                    if (url == null) {
+                                        viewModel.showNotice(
+                                            "LOCALHOST is only available in LAN mode. Use Projects with a public URL over Internet.",
+                                        )
+                                    } else {
+                                        browserUrl = url
+                                        route = "browser"
+                                    }
                                 },
                                 onProjects = {
                                     viewModel.refreshProjects()

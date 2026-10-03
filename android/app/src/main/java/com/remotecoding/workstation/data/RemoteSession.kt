@@ -34,20 +34,19 @@ class RemoteSession(
     private var socket: WebSocket? = null
     private var reconnectJob: Job? = null
     private val manualStop = AtomicBoolean(false)
-    private var host = ""
-    private var port = 8765
+    private var target: ConnectionTarget? = null
     private var token = ""
     private var autoReconnect = true
 
-    fun configure(host: String, port: Int, token: String, autoReconnect: Boolean) {
-        this.host = host
-        this.port = port
+    fun configure(target: ConnectionTarget, token: String, autoReconnect: Boolean) {
+        this.target = target
         this.token = token
         this.autoReconnect = autoReconnect
     }
 
     fun connect() {
-        if (host.isBlank() || token.isBlank()) {
+        val t = target
+        if (t == null || !t.isConfigured() || token.isBlank()) {
             _state.update {
                 it.copy(status = ConnectionStatus.PairingRequired, message = "Pairing is required before connecting.")
             }
@@ -132,6 +131,7 @@ class RemoteSession(
     }
 
     private fun openSocket() {
+        val t = target ?: return
         socket?.cancel()
         _state.update {
             it.copy(
@@ -139,7 +139,7 @@ class RemoteSession(
                 message = if (it.retry > 0) "Connection lost\nRetry: ${it.retry}" else "Connecting…",
             )
         }
-        val request = Request.Builder().url("ws://$host:$port/ws").build()
+        val request = Request.Builder().url(t.wsUrl()).build()
         socket = client.newWebSocket(request, listener)
     }
 
