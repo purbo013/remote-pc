@@ -53,7 +53,8 @@ export const consoleHtml = `<!doctype html>
         relayEl.textContent = relay.online ? 'ONLINE' : 'CONNECTING…';
       }
       document.getElementById('nodeId').textContent = relay.nodeId || '—';
-      const base = (relay.url || '').replace(/\/$/, '');
+      let base = relay.url || '';
+      if (base.endsWith('/')) base = base.slice(0, -1);
       document.getElementById('relayUrl').textContent = relay.enabled && base
         ? base + (relay.phoneBasePath || '')
         : '—';
